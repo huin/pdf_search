@@ -14,7 +14,7 @@ def format_size(size_bytes):
     """Format bytes to human-readable size."""
     if size_bytes is None:
         return "0 B"
-    for unit in ['B', 'KB', 'MB', 'GB']:
+    for unit in ["B", "KB", "MB", "GB"]:
         if size_bytes < 1024.0:
             return f"{size_bytes:.1f} {unit}"
         size_bytes /= 1024.0
@@ -31,7 +31,8 @@ def search(query, limit=10):
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
 
-    c.execute("""
+    c.execute(
+        """
         SELECT
             d.id, d.filename, d.pdf_path, d.file_size,
             snippet(documents_fts, 1, '**', '**', '...', 50) as snippet,
@@ -41,7 +42,9 @@ def search(query, limit=10):
         WHERE documents_fts MATCH ?
         ORDER BY score
         LIMIT ?
-    """, (query, limit))
+    """,
+        (query, limit),
+    )
 
     results = c.fetchall()
     conn.close()

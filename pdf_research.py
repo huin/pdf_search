@@ -24,6 +24,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
     import config
+
     _PORT = config.PORT
     _HOST = "localhost"
 except ImportError:
@@ -43,15 +44,19 @@ def _get(endpoint, params=None):
 
 # --- API calls ---
 
+
 def research(query, limit=20, offset=0, passages=10, passage_offset=0):
     """Full-text search returning documents with extracted passages."""
-    return _get("/api/research", {
-        "q": query,
-        "limit": limit,
-        "offset": offset,
-        "passages": passages,
-        "passage_offset": passage_offset,
-    })
+    return _get(
+        "/api/research",
+        {
+            "q": query,
+            "limit": limit,
+            "offset": offset,
+            "passages": passages,
+            "passage_offset": passage_offset,
+        },
+    )
 
 
 def search(query, limit=20, offset=0):
@@ -87,13 +92,16 @@ def text(doc_id):
 
 # --- Output formatters ---
 
+
 def print_research(data):
     total = data["total"]
     offset = data["offset"]
     limit = data["limit"]
     shown = len(data["results"])
     print(f"Query: {data['query']}")
-    print(f"Total matching documents: {total}  (offset={offset}, limit={limit}, showing {shown})")
+    print(
+        f"Total matching documents: {total}  (offset={offset}, limit={limit}, showing {shown})"
+    )
     if total > offset + limit:
         print(f"  -> More results available: use --offset {offset + limit}")
     print()
@@ -111,7 +119,7 @@ def print_research(data):
 
 def print_folders(data):
     path = data.get("current_path", "")
-    label = f'/{path}' if path else '(root)'
+    label = f"/{path}" if path else "(root)"
     print(f"Folders in {label}:")
     for f in data["folders"]:
         print(f"  {f['name']}/  ({f['count']} files)")
@@ -121,7 +129,7 @@ def print_folders(data):
 
 def print_browse(data):
     path = data.get("path", "")
-    label = f'/{path}' if path else '(root)'
+    label = f"/{path}" if path else "(root)"
     print(f"Files in {label}:  ({data['count']} total)")
     for doc in data["results"]:
         print(f"  [{doc['id']}] {doc['filename']}  {doc['size']}  {doc['modified']}")
@@ -162,24 +170,47 @@ Research workflow:
   2. Run `research "topic"` or `research "topic" --path "Folder"` for a survey
   3. Paginate with --offset and --passage-offset to read more
   4. Use `browse "Folder"` to see specific files by ID
-""")
+""",
+    )
 
-    parser.add_argument("command", choices=["search", "research", "folders", "browse", "stats"],
-                        help="Operation to perform")
-    parser.add_argument("query_or_path", nargs="?", default="",
-                        help="Search query (for search/research) or path (for folders/browse)")
-    parser.add_argument("--path", default=None,
-                        help="Folder filter for search/research (e.g. 'Shadow of the Weird Wizard')")
-    parser.add_argument("--limit", type=int, default=20,
-                        help="Max documents to return (default: 20)")
-    parser.add_argument("--offset", type=int, default=0,
-                        help="Document offset for pagination")
-    parser.add_argument("--passages", type=int, default=10,
-                        help="Max passages per document (default: 10)")
-    parser.add_argument("--passage-offset", type=int, default=0, dest="passage_offset",
-                        help="Passage offset for pagination within a document")
-    parser.add_argument("--json", action="store_true",
-                        help="Output raw JSON instead of formatted text")
+    parser.add_argument(
+        "command",
+        choices=["search", "research", "folders", "browse", "stats"],
+        help="Operation to perform",
+    )
+    parser.add_argument(
+        "query_or_path",
+        nargs="?",
+        default="",
+        help="Search query (for search/research) or path (for folders/browse)",
+    )
+    parser.add_argument(
+        "--path",
+        default=None,
+        help="Folder filter for search/research (e.g. 'Shadow of the Weird Wizard')",
+    )
+    parser.add_argument(
+        "--limit", type=int, default=20, help="Max documents to return (default: 20)"
+    )
+    parser.add_argument(
+        "--offset", type=int, default=0, help="Document offset for pagination"
+    )
+    parser.add_argument(
+        "--passages",
+        type=int,
+        default=10,
+        help="Max passages per document (default: 10)",
+    )
+    parser.add_argument(
+        "--passage-offset",
+        type=int,
+        default=0,
+        dest="passage_offset",
+        help="Passage offset for pagination within a document",
+    )
+    parser.add_argument(
+        "--json", action="store_true", help="Output raw JSON instead of formatted text"
+    )
 
     args = parser.parse_args()
 
@@ -188,8 +219,13 @@ Research workflow:
             q = args.query_or_path
             if args.path:
                 q = f'{q} path:"{args.path}"'
-            data = research(q, limit=args.limit, offset=args.offset,
-                            passages=args.passages, passage_offset=args.passage_offset)
+            data = research(
+                q,
+                limit=args.limit,
+                offset=args.offset,
+                passages=args.passages,
+                passage_offset=args.passage_offset,
+            )
             if args.json:
                 print(json.dumps(data, indent=2))
             else:
@@ -233,6 +269,9 @@ Research workflow:
                 print_stats(data)
 
     except urllib.error.URLError as e:
-        print(f"Error: cannot reach API at {BASE_URL} — is the server running?", file=sys.stderr)
+        print(
+            f"Error: cannot reach API at {BASE_URL} — is the server running?",
+            file=sys.stderr,
+        )
         print(f"  {e}", file=sys.stderr)
         sys.exit(1)

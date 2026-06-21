@@ -14,16 +14,16 @@ from pathlib import Path
 
 import shutil
 
-os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
+os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
 
 import config
 
 BATCH_SIZE = 50
 
 # Locate pdftotext binary, checking common Homebrew paths if needed
-PDFTOTEXT = shutil.which('pdftotext')
+PDFTOTEXT = shutil.which("pdftotext")
 if not PDFTOTEXT:
-    for p in ['/opt/homebrew/bin/pdftotext', '/usr/local/bin/pdftotext']:
+    for p in ["/opt/homebrew/bin/pdftotext", "/usr/local/bin/pdftotext"]:
         if os.path.isfile(p):
             PDFTOTEXT = p
             break
@@ -46,7 +46,7 @@ def init_db(db_path):
     # Add modified_date column if missing (for existing databases)
     c.execute("PRAGMA table_info(documents)")
     columns = {row[1] for row in c.fetchall()}
-    if 'modified_date' not in columns:
+    if "modified_date" not in columns:
         c.execute("ALTER TABLE documents ADD COLUMN modified_date TIMESTAMP")
         conn.commit()
 
@@ -75,13 +75,15 @@ def extract_text(pdf_path):
         return None
     try:
         result = subprocess.run(
-            [PDFTOTEXT, '-enc', 'UTF-8', pdf_path, '-'],
-            capture_output=True, text=True, timeout=300
+            [PDFTOTEXT, "-enc", "UTF-8", pdf_path, "-"],
+            capture_output=True,
+            text=True,
+            timeout=300,
         )
         if result.returncode == 0:
             return result.stdout
         return None
-    except (subprocess.TimeoutExpired, Exception):
+    except subprocess.TimeoutExpired, Exception:
         return None
 
 
@@ -95,14 +97,19 @@ def _extract_worker(pdf_path):
 
     stat = os.stat(pdf_path)
     return {
-        'pdf_path': pdf_path, 'filename': filename, 'text': text,
-        'file_size': stat.st_size,
-        'modified_date': datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S'),
+        "pdf_path": pdf_path,
+        "filename": filename,
+        "text": text,
+        "file_size": stat.st_size,
+        "modified_date": datetime.fromtimestamp(stat.st_mtime).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        ),
     }
 
 
 def scan_directory(directory, db_path, progress_callback=None, use_threads=False):
     """Scan a directory tree for PDFs and index them."""
+
     def _progress(msg):
         if progress_callback:
             progress_callback(msg)
@@ -125,7 +132,7 @@ def scan_directory(directory, db_path, progress_callback=None, use_threads=False
     disk_paths = set()
     for root, dirs, files in os.walk(directory):
         for f in files:
-            if f.lower().endswith('.pdf'):
+            if f.lower().endswith(".pdf"):
                 p = str(Path(os.path.join(root, f)).resolve())
                 pdf_files.append(p)
                 disk_paths.add(p)
@@ -140,7 +147,7 @@ def scan_directory(directory, db_path, progress_callback=None, use_threads=False
         except OSError:
             continue
         size = stat.st_size
-        mdate = datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
+        mdate = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
 
         # Skip previously failed files (unless the file has changed)
         prev_fail = failed.get(pdf_path)
@@ -174,42 +181,60 @@ def scan_directory(directory, db_path, progress_callback=None, use_threads=False
                 print(f"  Failed: {os.path.basename(src)}")
                 try:
                     st = os.stat(src)
-                    md = datetime.fromtimestamp(st.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
-                    c.execute("""
+                    md = datetime.fromtimestamp(st.st_mtime).strftime(
+                        "%Y-%m-%d %H:%M:%S"
+                    )
+                    c.execute(
+                        """
                         INSERT OR REPLACE INTO failed_extractions
                         (pdf_path, file_size, modified_date, failed_date)
                         VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-                    """, (src, st.st_size, md))
+                    """,
+                        (src, st.st_size, md),
+                    )
                     conn.commit()
                 except OSError:
                     pass
                 continue
 
-            pdf_path = result['pdf_path']
+            pdf_path = result["pdf_path"]
             existing = known.get(pdf_path)
             print(f"  Indexed: {result['filename']}")
 
             if existing:
                 doc_id = existing[0]
-                c.execute("""
+                c.execute(
+                    """
                     UPDATE documents
                     SET extracted_date = CURRENT_TIMESTAMP,
                         file_size = ?, modified_date = ?
                     WHERE id = ?
-                """, (result['file_size'], result['modified_date'], doc_id))
+                """,
+                    (result["file_size"], result["modified_date"], doc_id),
+                )
                 c.execute("DELETE FROM documents_fts WHERE rowid = ?", (doc_id,))
             else:
-                c.execute("""
+                c.execute(
+                    """
                     INSERT INTO documents (pdf_path, filename, file_size, modified_date)
                     VALUES (?, ?, ?, ?)
-                """, (pdf_path, result['filename'],
-                      result['file_size'], result['modified_date']))
+                """,
+                    (
+                        pdf_path,
+                        result["filename"],
+                        result["file_size"],
+                        result["modified_date"],
+                    ),
+                )
                 doc_id = c.lastrowid
 
-            c.execute("""
+            c.execute(
+                """
                 INSERT INTO documents_fts (rowid, filename, content)
                 VALUES (?, ?, ?)
-            """, (doc_id, result['filename'], result['text']))
+            """,
+                (doc_id, result["filename"], result["text"]),
+            )
 
             processed += 1
             batch_count += 1
@@ -247,7 +272,9 @@ def scan_directory(directory, db_path, progress_callback=None, use_threads=False
 
 if __name__ == "__main__":
     if not PDFTOTEXT:
-        print("Error: pdftotext not found. Install poppler-utils (Linux) or poppler (macOS).")
+        print(
+            "Error: pdftotext not found. Install poppler-utils (Linux) or poppler (macOS)."
+        )
         sys.exit(1)
 
     pdf_dir = sys.argv[1] if len(sys.argv) > 1 else config.PDF_DIR

@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
-dependencies = ["flask>=3.1.3"]
+dependencies = ["click>=8.4.1", "flask>=3.1.3"]
 
 [dependency-groups]
 dev = [
@@ -13,3 +13,10 @@ dev = [
     "ruff>=0.15.18",
     "ty>=0.0.51",
 ]
+
+[project.scripts]
+pdf-search = "pdf_search.main:main"
+
+[build-system]
+requires = ["uv_build>=0.11.23,<0.12"]
+build-backend = "uv_build"

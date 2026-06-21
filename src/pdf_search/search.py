@@ -1,20 +1,22 @@
-#!/usr/bin/env python3
 """
 Command-line full-text search over indexed PDFs.
+
+Example: pdf-search search 'magic items' 20
 """
 
 import os
 import sqlite3
-import sys
 
-import config
+import click
+
+from pdf_search import config
 
 
 def format_size(size_bytes):
     """Format bytes to human-readable size."""
     if size_bytes is None:
         return "0 B"
-    for unit in ['B', 'KB', 'MB', 'GB']:
+    for unit in ["B", "KB", "MB", "GB"]:
         if size_bytes < 1024.0:
             return f"{size_bytes:.1f} {unit}"
         size_bytes /= 1024.0
@@ -31,7 +33,8 @@ def search(query, limit=10):
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
 
-    c.execute("""
+    c.execute(
+        """
         SELECT
             d.id, d.filename, d.pdf_path, d.file_size,
             snippet(documents_fts, 1, '**', '**', '...', 50) as snippet,
@@ -41,7 +44,9 @@ def search(query, limit=10):
         WHERE documents_fts MATCH ?
         ORDER BY score
         LIMIT ?
-    """, (query, limit))
+    """,
+        (query, limit),
+    )
 
     results = c.fetchall()
     conn.close()
@@ -61,12 +66,8 @@ def search(query, limit=10):
         print("-" * 80)
 
 
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python3 search.py <query> [limit]")
-        print("Example: python3 search.py 'magic items' 20")
-        sys.exit(1)
-
-    query = sys.argv[1]
-    limit = int(sys.argv[2]) if len(sys.argv) > 2 else 10
+@click.command(help=__doc__)
+@click.argument("query")
+@click.option("--limit", type=int, default=10)
+def command(query: str, limit: int | None) -> None:
     search(query, limit)

@@ -24,12 +24,12 @@ Usage:
 """
 
 import functools
-import sys
 import json
-import urllib.error
-import urllib.request
-import urllib.parse
 import os
+import sys
+import urllib.error
+import urllib.parse
+import urllib.request
 
 import click
 

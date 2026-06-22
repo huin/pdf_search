@@ -4,14 +4,14 @@ Extracts text from PDFs using pdftotext and stores it in SQLite with FTS5.
 """
 
 import os
+import shutil
 import sqlite3
 import subprocess
 import sys
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+from concurrent.futures import (ProcessPoolExecutor, ThreadPoolExecutor,
+                                as_completed)
 from datetime import datetime
 from pathlib import Path
-
-import shutil
 
 import click
 

@@ -4,14 +4,15 @@ Override any setting with environment variables.
 """
 
 import os
+from pathlib import Path
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = Path(__file__).absolute().parent
 
 # Directory containing PDFs to index
-PDF_DIR = os.environ.get("PDF_SEARCH_PDF_DIR", os.path.join(BASE_DIR, "pdfs"))
+PDF_DIR = Path(os.environ.get("PDF_SEARCH_PDF_DIR", os.path.join(BASE_DIR, "pdfs")))
 
 # Database file
-DB_PATH = os.environ.get("PDF_SEARCH_DB", os.path.join(BASE_DIR, "pdf_search.db"))
+DB_PATH = Path(os.environ.get("PDF_SEARCH_DB", os.path.join(BASE_DIR, "pdf_search.db")))
 
 # Web server
 HOST = os.environ.get("PDF_SEARCH_HOST", "0.0.0.0")

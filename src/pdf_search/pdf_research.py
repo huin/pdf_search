@@ -5,16 +5,24 @@ Provides search, folder listing, browsing, and full-text retrieval
 against the local PDF search API. Use this script for all research
 operations — do not write new scripts.
 
+\b
+Search syntax:
+    "exact phrase"            phrase match
+    -word                     exclude term
+    word1 OR word2            either term
+    word*                     prefix match
+    path:"Folder Name"        restrict to folder
+    filename:term             match filename only
+    word1 NEAR/5 word2        proximity match
+
+\b
 Research workflow:
-
     1. Run `folders` to discover available collections
-
     2. Run `research "topic"` or `research "topic" --path "Folder"` for a survey
-
     3. Paginate with --offset and --passage-offset to read more
-
     4. Use `browse "Folder"` to see specific files by ID
 
+\b
 Usage:
   pdf-search pdf_research search "query" [options]
   pdf-search pdf_research folders [path]
@@ -30,6 +38,7 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+from typing import Callable, TypedDict, cast, NotRequired
 
 import click
 
@@ -47,7 +56,10 @@ except ImportError:
 BASE_URL = f"http://{_HOST}:{_PORT}"
 
 
-def _get(endpoint, params=None):
+def _get(
+    endpoint: str,
+    params: dict[str, str | int | list[str | int]] | None = None,
+) -> object:
     url = BASE_URL + endpoint
     if params:
         url += "?" + urllib.parse.urlencode(params)
@@ -58,47 +70,115 @@ def _get(endpoint, params=None):
 # --- API calls ---
 
 
-def _research(query, limit=20, offset=0, passages=10, passage_offset=0):
+class _ResearchDataItem(TypedDict):
+    id: int
+    path: str
+    passages: list[str]
+    total_passages: int
+    passage_offset: int
+
+
+class _ResearchData(TypedDict):
+    query: str
+    total: int
+    offset: int
+    limit: int
+    results: list[_ResearchDataItem]
+
+
+def _research(
+    query: str,
+    limit: int = 20,
+    offset: int = 0,
+    passages: int = 10,
+    passage_offset: int = 0,
+) -> _ResearchData:
     """Full-text search returning documents with extracted passages."""
-    return _get(
-        "/api/research",
-        {
-            "q": query,
-            "limit": limit,
-            "offset": offset,
-            "passages": passages,
-            "passage_offset": passage_offset,
-        },
+    return cast(
+        _ResearchData,
+        _get(
+            "/api/research",
+            {
+                "q": query,
+                "limit": limit,
+                "offset": offset,
+                "passages": passages,
+                "passage_offset": passage_offset,
+            },
+        ),
     )
 
 
-def search(query, limit=20, offset=0):
+class _SearchDataItem(TypedDict):
+    id: int
+    path: str
+    size: int
+    snippet: str
+
+
+class _SearchData(TypedDict):
+    query: str
+    count: int
+    results: list[_SearchDataItem]
+
+
+def _search(query: str, limit: int = 20, offset: int = 0) -> _SearchData:
     """Search returning document metadata and snippets (no full passages)."""
-    return _get("/search", {"q": query, "limit": limit, "offset": offset})
+    return cast(
+        _SearchData, _get("/search", {"q": query, "limit": limit, "offset": offset})
+    )
 
 
-def _folders(path=""):
+class _FoldersDataItem(TypedDict):
+    name: str
+    count: int
+
+
+class _FoldersData(TypedDict):
+    current_path: NotRequired[str]
+    folders: list[_FoldersDataItem]
+
+
+def _folders(path: str | None = "") -> _FoldersData:
     """List subdirectories at the given path with file counts."""
     params = {}
     if path:
         params["path"] = path
-    return _get("/folders", params)
+    return cast(_FoldersData, _get("/folders", params))
 
 
-def _browse(path=""):
+class _BrowseDataItem(TypedDict):
+    id: int
+    filename: str
+    size: int
+    modified: str
+
+
+class _BrowseData(TypedDict):
+    path: NotRequired[str]
+    count: int
+    results: list[_BrowseDataItem]
+
+
+def _browse(path: str | None = "") -> _BrowseData:
     """List PDF files directly in the given folder path."""
     params = {}
     if path:
         params["path"] = path
-    return _get("/browse", params)
+    return cast(_BrowseData, _get("/browse", params))
 
 
-def _stats():
+class _StatsData(TypedDict):
+    total_documents: int
+    total_size: int
+
+
+def _stats() -> _StatsData:
     """Return database statistics (total documents, total size)."""
-    return _get("/stats")
+    return cast(_StatsData, _get("/stats"))
 
 
-def text(doc_id):
+def text(doc_id: int) -> object:
     """Return the full extracted text of a document by ID."""
     return _get(f"/text/{doc_id}", {"raw": "1"})
 
@@ -106,7 +186,7 @@ def text(doc_id):
 # --- Output formatters ---
 
 
-def print_research(data):
+def print_research(data: _ResearchData) -> None:
     total = data["total"]
     offset = data["offset"]
     limit = data["limit"]
@@ -130,7 +210,7 @@ def print_research(data):
             print()
 
 
-def print_folders(data):
+def print_folders(data: _FoldersData) -> None:
     path = data.get("current_path", "")
     label = f"/{path}" if path else "(root)"
     print(f"Folders in {label}:")
@@ -140,7 +220,7 @@ def print_folders(data):
         print("  (none)")
 
 
-def print_browse(data):
+def print_browse(data: _BrowseData) -> None:
     path = data.get("path", "")
     label = f"/{path}" if path else "(root)"
     print(f"Files in {label}:  ({data['count']} total)")
@@ -148,7 +228,7 @@ def print_browse(data):
         print(f"  [{doc['id']}] {doc['filename']}  {doc['size']}  {doc['modified']}")
 
 
-def print_stats(data):
+def print_stats(data: _StatsData) -> None:
     print(f"Total documents: {data['total_documents']}")
     print(f"Total size:      {data['total_size']}")
 
@@ -177,21 +257,7 @@ def _handle_urlerror[T, **P](f: Callable[P, T]) -> Callable[P, T]:
     return wrapper
 
 
-_arg_query = click.argument(
-    "query",
-    help="""
-    Search query
-
-    Search syntax:
-        "exact phrase"            phrase match
-        -word                     exclude term
-        word1 OR word2            either term
-        word*                     prefix match
-        path:"Folder Name"        restrict to folder
-        filename:term             match filename only
-        word1 NEAR/5 word2        proximity match
-    """,
-)
+_arg_query = click.argument("query")
 _opt_json_out = click.option(
     "--json",
     "json_out",
@@ -202,7 +268,7 @@ _opt_json_out = click.option(
 
 
 @click.command
-@click.argument("query")
+@_arg_query
 @click.option(
     "--path",
     default=None,
@@ -210,13 +276,13 @@ _opt_json_out = click.option(
 )
 @_opt_json_out
 @_handle_urlerror
-def _search(query: str, path: str | None, json_out: bool) -> None:
+def search(query: str, path: str | None, json_out: bool) -> None:
     """QUERY            Keyword/phrase search with short snippets"""
     q = query
-    if args.path:
+    if path:
         q = f'{q} path:"{path}"'
-    data = _get("/search", {"q": q})
-    if args.json:
+    data = _search(q)
+    if json_out:
         print(json.dumps(data, indent=2))
     else:
         print(f"Query: {data['query']}")
@@ -229,7 +295,7 @@ def _search(query: str, path: str | None, json_out: bool) -> None:
 
 
 @click.command
-@click.argument("query")
+@_arg_query
 @click.option(
     "--path",
     default=None,
@@ -268,12 +334,12 @@ def research(
         q = f'{q} path:"{path}"'
     data = _research(
         q,
-        limit=args.limit,
-        offset=args.offset,
-        passages=args.passages,
-        passage_offset=args.passage_offset,
+        limit=limit,
+        offset=offset,
+        passages=passages,
+        passage_offset=passage_offset,
     )
-    if args.json:
+    if json_out:
         print(json.dumps(data, indent=2))
     else:
         print_research(data)
@@ -284,12 +350,12 @@ def research(
 @_opt_json_out
 @_handle_urlerror
 def folders(
-    path: Path | None,
+    path: str | None,
     json_out: bool,
 ) -> None:
     """[PATH]           List subdirectories at PATH (default: root)"""
     data = _folders(path)
-    if args.json:
+    if json_out:
         print(json.dumps(data, indent=2))
     else:
         print_folders(data)
@@ -305,7 +371,7 @@ def browse(
 ) -> None:
     """[PATH]           List PDF files in PATH (default: root)"""
     data = _browse(path)
-    if args.json:
+    if json_out:
         print(json.dumps(data, indent=2))
     else:
         print_browse(data)
@@ -317,7 +383,7 @@ def browse(
 def stats(json_out: bool) -> None:
     """Database statistics"""
     data = _stats()
-    if args.json:
+    if json_out:
         print(json.dumps(data, indent=2))
     else:
         print_stats(data)

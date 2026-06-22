@@ -4,7 +4,6 @@ Command-line full-text search over indexed PDFs.
 Example: pdf-search search 'magic items' 20
 """
 
-import os
 import sqlite3
 
 import click
@@ -12,7 +11,7 @@ import click
 from pdf_search import config
 
 
-def format_size(size_bytes):
+def format_size(size_bytes: int | float | None) -> str:
     """Format bytes to human-readable size."""
     if size_bytes is None:
         return "0 B"
@@ -23,9 +22,9 @@ def format_size(size_bytes):
     return f"{size_bytes:.1f} TB"
 
 
-def search(query, limit=10):
+def search(query: str, limit: int = 10) -> None:
     """Run an FTS5 search and print results."""
-    if not os.path.exists(config.DB_PATH):
+    if not config.DB_PATH.exists():
         print(f"Error: database not found at {config.DB_PATH}")
         return
 
@@ -69,5 +68,5 @@ def search(query, limit=10):
 @click.command(help=__doc__)
 @click.argument("query")
 @click.option("--limit", type=int, default=10)
-def command(query: str, limit: int | None) -> None:
+def command(query: str, limit: int) -> None:
     search(query, limit)

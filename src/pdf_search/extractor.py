@@ -8,10 +8,10 @@ import shutil
 import sqlite3
 import subprocess
 import sys
-from concurrent.futures import (ProcessPoolExecutor, ThreadPoolExecutor,
-                                as_completed)
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
+from typing import Callable
 
 import click
 
@@ -30,7 +30,7 @@ if not PDFTOTEXT:
             break
 
 
-def init_db(db_path):
+def init_db(db_path: Path) -> None:
     """Initialize SQLite database with FTS5."""
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
@@ -108,10 +108,15 @@ def _extract_worker(pdf_path):
     }
 
 
-def scan_directory(directory, db_path, progress_callback=None, use_threads=False):
+def scan_directory(
+    directory: Path,
+    db_path: Path,
+    progress_callback: Callable[[str], None] | None = None,
+    use_threads: bool = False,
+) -> None:
     """Scan a directory tree for PDFs and index them."""
 
-    def _progress(msg):
+    def _progress(msg: str) -> None:
         if progress_callback:
             progress_callback(msg)
         print(msg)
@@ -121,17 +126,21 @@ def scan_directory(directory, db_path, progress_callback=None, use_threads=False
 
     # Bulk-load existing records into memory for fast skip-checks
     c.execute("SELECT pdf_path, id, file_size, modified_date FROM documents")
-    known = {row[0]: (row[1], row[2], row[3]) for row in c.fetchall()}
+    known: dict[str, tuple[int, int, str]] = {
+        row[0]: (row[1], row[2], row[3]) for row in c.fetchall()
+    }
     known_paths = set(known.keys())
 
     # Load previously failed extractions
     c.execute("SELECT pdf_path, file_size, modified_date FROM failed_extractions")
-    failed = {row[0]: (row[1], row[2]) for row in c.fetchall()}
+    failed: dict[str, tuple[int, str]] = {
+        row[0]: (row[1], row[2]) for row in c.fetchall()
+    }
 
     # Collect all PDFs on disk
     pdf_files = []
     disk_paths = set()
-    for root, dirs, files in os.walk(directory):
+    for root, _, files in os.walk(directory):
         for f in files:
             if f.lower().endswith(".pdf"):
                 p = str(Path(os.path.join(root, f)).resolve())
@@ -272,8 +281,8 @@ def scan_directory(directory, db_path, progress_callback=None, use_threads=False
 
 
 @click.command(help=__doc__)
-@click.option("--pdf_dir")
-def command(pdf_dir: str | None) -> None:
+@click.option("--pdf-dir", type=Path)
+def command(pdf_dir: Path | None) -> None:
     if not PDFTOTEXT:
         print(
             "Error: pdftotext not found. Install poppler-utils (Linux) or poppler (macOS)."
@@ -283,7 +292,7 @@ def command(pdf_dir: str | None) -> None:
     if pdf_dir is None:
         pdf_dir = config.PDF_DIR
 
-    if not os.path.isdir(pdf_dir):
+    if not pdf_dir.is_dir():
         print(f"Error: directory not found: {pdf_dir}")
         sys.exit(1)
 

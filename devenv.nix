@@ -13,7 +13,10 @@
     venv.enable = true;
     uv = {
       enable = true;
-      sync.enable = true;
+      sync = {
+        enable = true;
+        groups = ["nox"];
+      };
     };
   };
 

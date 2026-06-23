@@ -7,13 +7,15 @@ requires-python = ">=3.12"
 dependencies = ["click>=8.4.1", "flask>=3.1.3"]
 
 [dependency-groups]
-dev = [
+check = [
+  # Include nox for type checking noxfile.py.
+  { include-group = "nox" },
   "flake8>=7.3.0",
   "flake8-pyproject>=1.2.4",
-  "isort>=8.0.1",
-  "ruff>=0.15.18",
   "ty>=0.0.51",
 ]
+format = ["isort>=8.0.1", "ruff>=0.15.18"]
+nox = ["nox>=2026.4.10", "nox-uv>=0.8.0"]
 
 [project.scripts]
 pdf-search = "pdf_search.main:main"
@@ -31,3 +33,6 @@ line_length = 100
 
 [tool.ruff]
 line-length = 100
+
+[tool.uv]
+default-groups = ["nox"]

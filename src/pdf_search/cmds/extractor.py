@@ -84,7 +84,7 @@ def extract_text(pdf_path):
         if result.returncode == 0:
             return result.stdout
         return None
-    except subprocess.TimeoutExpired, Exception:
+    except (subprocess.TimeoutExpired, Exception):
         return None
 
 
@@ -102,9 +102,7 @@ def _extract_worker(pdf_path):
         "filename": filename,
         "text": text,
         "file_size": stat.st_size,
-        "modified_date": datetime.fromtimestamp(stat.st_mtime).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        ),
+        "modified_date": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
     }
 
 
@@ -133,9 +131,7 @@ def scan_directory(
 
     # Load previously failed extractions
     c.execute("SELECT pdf_path, file_size, modified_date FROM failed_extractions")
-    failed: dict[str, tuple[int, str]] = {
-        row[0]: (row[1], row[2]) for row in c.fetchall()
-    }
+    failed: dict[str, tuple[int, str]] = {row[0]: (row[1], row[2]) for row in c.fetchall()}
 
     # Collect all PDFs on disk
     pdf_files = []
@@ -191,9 +187,7 @@ def scan_directory(
                 print(f"  Failed: {os.path.basename(src)}")
                 try:
                     st = os.stat(src)
-                    md = datetime.fromtimestamp(st.st_mtime).strftime(
-                        "%Y-%m-%d %H:%M:%S"
-                    )
+                    md = datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
                     c.execute(
                         """
                         INSERT OR REPLACE INTO failed_extractions
@@ -284,9 +278,7 @@ def scan_directory(
 @click.option("--pdf-dir", type=Path)
 def command(pdf_dir: Path | None) -> None:
     if not PDFTOTEXT:
-        print(
-            "Error: pdftotext not found. Install poppler-utils (Linux) or poppler (macOS)."
-        )
+        print("Error: pdftotext not found. Install poppler-utils (Linux) or poppler (macOS).")
         sys.exit(1)
 
     if pdf_dir is None:

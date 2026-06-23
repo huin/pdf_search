@@ -124,9 +124,7 @@ class _SearchData(TypedDict):
 
 def _search(query: str, limit: int = 20, offset: int = 0) -> _SearchData:
     """Search returning document metadata and snippets (no full passages)."""
-    return cast(
-        _SearchData, _get("/search", {"q": query, "limit": limit, "offset": offset})
-    )
+    return cast(_SearchData, _get("/search", {"q": query, "limit": limit, "offset": offset}))
 
 
 class _FoldersDataItem(TypedDict):
@@ -192,9 +190,7 @@ def print_research(data: _ResearchData) -> None:
     limit = data["limit"]
     shown = len(data["results"])
     print(f"Query: {data['query']}")
-    print(
-        f"Total matching documents: {total}  (offset={offset}, limit={limit}, showing {shown})"
-    )
+    print(f"Total matching documents: {total}  (offset={offset}, limit={limit}, showing {shown})")
     if total > offset + limit:
         print(f"  -> More results available: use --offset {offset + limit}")
     print()
@@ -308,9 +304,7 @@ def search(query: str, path: str | None, json_out: bool) -> None:
     default=0,
     help="Passage offset for pagination within a document",
 )
-@click.option(
-    "--limit", type=int, default=20, help="Max documents to return (default: 20)"
-)
+@click.option("--limit", type=int, default=20, help="Max documents to return (default: 20)")
 @click.option("--offset", type=int, default=0, help="Document offset for pagination")
 @click.option(
     "--passages",

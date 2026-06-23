@@ -1,6 +1,6 @@
 import click
 
-from pdf_search import extractor, pdf_research, search
+from pdf_search.cmds import extractor, pdf_research, search
 
 
 @click.group()

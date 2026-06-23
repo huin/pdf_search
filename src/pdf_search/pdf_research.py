@@ -38,7 +38,7 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Callable, TypedDict, cast, NotRequired
+from typing import Callable, NotRequired, TypedDict, cast
 
 import click
 

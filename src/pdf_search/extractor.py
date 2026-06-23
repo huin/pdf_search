@@ -15,9 +15,9 @@ from typing import Callable
 
 import click
 
-os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
-
 from pdf_search import config
+
+os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
 
 BATCH_SIZE = 50
 
